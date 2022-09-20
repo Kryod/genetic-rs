@@ -1,36 +1,16 @@
-use std::fmt::Display;
+use std::{fmt::Display, time::Instant};
 
 use rand::{thread_rng, Rng, distributions::Alphanumeric};
 
 mod criterion;
 mod selector;
+mod evaluator;
+mod generator;
 
-use criterion::Criterion;
-use selector::Selector;
-
-fn generator() -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(8)
-        .map(char::from)
-        .collect()
-}
-
-fn evaluator(pop: &String) -> f32 {
-    let mut val = 0.0;
-    let solution = String::from("iloveyou");
-
-    for (c, cs) in pop.chars().zip(solution.chars()) {
-        if c == cs {
-            val += 1.0;
-        } else {
-            let diff = (c as u32).abs_diff(cs as u32);
-            val += 0.5 - (0.5 * (1.0/diff as f32));
-        }
-    }
-
-    val
-}
+use criterion::{Criterion, Mark};
+use selector::{Selector, Elitism};
+use evaluator::{Evaluator, BasicEvaluation};
+use generator::{Generator, BasicGenerator};
 
 fn crossover(parent1: &String, parent2: &String) -> String {
     let result = parent1.clone();
@@ -53,16 +33,58 @@ fn mutation(pop: &mut String) {
     *pop = new_string;
 }
 
+const NUM_THREADS: u32 = 1;
+
+fn fill_ratings<T, E>(pop_size: u32, pop: &Vec<T>, evaluator: &E, ratings: &mut Vec<f32>)
+where
+    E: Evaluator<T> + Send + Sync,
+    T: Send + Sync {
+    std::thread::scope(|scope| {
+        let mut pop_handled = pop_size / NUM_THREADS;
+        let mut offset = 0;
+        if pop_size % NUM_THREADS != 0 {
+            offset += pop_size % NUM_THREADS;
+        }
+        let mut threads = vec![];
+
+        for thread in 0..NUM_THREADS {
+            
+            let begin = (thread*pop_handled) as usize;
+            if thread == NUM_THREADS - 1 {
+                pop_handled += offset;
+            }
+            let thread_pop = &pop[begin .. begin + pop_handled as usize];
+            threads.push(scope.spawn(move || {
+                
+                let mut buf = Vec::with_capacity(pop_handled as usize);
+
+                for p in thread_pop {
+                    buf.push(evaluator.evaluator(p));
+                }
+
+                buf
+            }))
+        }
+
+        for thread in threads {
+            let partial_data = thread.join().expect("Thread did not close correctly");
+
+            ratings.extend(partial_data);
+        }
+
+    });
+}
+
 fn generate<T, G, E, S, C, M, F>(generator: &G, evaluator: &E, selector: &S,
-    crossover: &C, mutation: &M, stop_crit: &F , pop_size: u32) -> T
+    crossover: &C, mutation: &M, stop_crit: &F , pop_size: u32) -> (T, i32)
 where 
-    G: Fn() -> T,
-    E: Fn(&T) -> f32,
+    G: Generator<T>,
+    E: Evaluator<T> + Send + Sync,
     F: Criterion,
     S: Selector<T>,
     C: Fn(&T, &T) -> T,
     M: Fn(&mut T),
-    T: Display {
+    T: Display + Send + Sync {
 
         
     let mut rng = thread_rng();
@@ -70,14 +92,12 @@ where
     let mut pop = Vec::with_capacity(pop_size as usize);
 
     for _ in 0..pop_size {
-        pop.push(generator());
+        pop.push(generator.generator());
     }
 
     let mut ratings = Vec::with_capacity(pop_size as usize);
 
-    for p in &pop {
-        ratings.push(evaluator(p));
-    }
+    fill_ratings(pop_size, &pop, evaluator, &mut ratings);
 
     let mut gen = 0;
 
@@ -108,29 +128,40 @@ where
 
         // Calculate fitness of new generation
         ratings.clear();
-        for p in &pop {
-            ratings.push(evaluator(p));
-        }
+        fill_ratings(pop_size, &pop, evaluator, &mut ratings);
     
         let (mut best, mut index) = (0.0, 0);
         ratings.iter().enumerate().for_each(|(i, v)| if *v > best {best = *v; index = i;});
 
-        println!("Gen: {gen}. Best rating: {best:.2}");
+        println!("Gen: {gen}. Best rating: {best:.3}");
         println!("Best element: {}", &pop[index]);
 
         gen += 1;
     }
-
-    println!("Finished in {gen} generations.");
     
     let (mut best, mut index) = (0.0, 0);
     ratings.iter().enumerate().for_each(|(i, v)| if *v > best {best = *v; index = i;});
 
-    pop.remove(index)
+    (pop.remove(index), gen)
 }
 
 fn main() {
-    let x = generate(&generator, &evaluator, &selector::Rating{ max_pop: 300 }, &crossover, &mutation, &criterion::Mark{ max_rating: 8.0 }, 1000);
-    println!("Solution: {x}");
+    //let selector = Rating{ max_pop: 200 };
+    let selector = Elitism{ max_pop: 100 };
+    let evaluator = BasicEvaluation{ solution: String::from("coucoualexjtmbb") };
+    let generator = BasicGenerator{ string_size: evaluator.solution.len() };
+    let stop_crit = Mark{ max_rating: evaluator.solution.len() as f32 };
+    let pop_size = 10000;
 
+    let instant = Instant::now();
+
+    let (solution, gen) = generate(&generator,
+        &evaluator,
+        &selector,
+        &crossover,
+        &mutation,
+        &stop_crit,
+        pop_size);
+    let time = instant.elapsed().as_millis();
+    println!("Found solution: {solution} ; in {gen} generations and in {time}ms");
 }
