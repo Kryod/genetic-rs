@@ -1,39 +1,22 @@
 use std::{fmt::Display, time::Instant};
 
-use rand::{thread_rng, Rng, distributions::Alphanumeric};
+use rand::{thread_rng, Rng};
 
 mod criterion;
 mod selector;
 mod evaluator;
 mod generator;
+mod crossover;
+mod mutation;
 
-use criterion::{Criterion, Mark};
-use selector::{Selector, Elitism};
-use evaluator::{Evaluator, BasicEvaluation};
-use generator::{Generator, BasicGenerator};
+use criterion::*;
+use selector::*;
+use evaluator::*;
+use generator::*;
+use crossover::*;
+use mutation::*;
 
-fn crossover(parent1: &String, parent2: &String) -> String {
-    let result = parent1.clone();
-    let pos: usize = thread_rng().gen_range(0..parent1.len());
-    let replace_len: usize = thread_rng().gen_range(1..=parent1.len() - pos);
-
-    result.replace(&parent1[pos..pos+replace_len], &parent2[pos..pos+replace_len])
-}
-
-fn mutation(pop: &mut String) {
-    let mut new_string = String::new();
-    let mut rng = thread_rng();
-    for c in pop.chars() {
-        if rng.gen_range(0..100) < 10 {
-            new_string.push(rng.sample(Alphanumeric) as char);
-        } else {
-            new_string.push(c);
-        }
-    }
-    *pop = new_string;
-}
-
-const NUM_THREADS: u32 = 1;
+const NUM_THREADS: u32 = 8;
 
 fn fill_ratings<T, E>(pop_size: u32, pop: &Vec<T>, evaluator: &E, ratings: &mut Vec<f32>)
 where
@@ -82,8 +65,8 @@ where
     E: Evaluator<T> + Send + Sync,
     F: Criterion,
     S: Selector<T>,
-    C: Fn(&T, &T) -> T,
-    M: Fn(&mut T),
+    C: Crossover<T>,
+    M: Mutation<T>,
     T: Display + Send + Sync {
 
         
@@ -116,12 +99,12 @@ where
             while id2 == id1 { id2 = rng.gen_range(0..parents_size) };
 
             // Crossing 2 parents to generate a new element
-            let mut child = crossover(&parents[id1], &parents[id2]);
+            let mut child = crossover.crossover(&parents[id1], &parents[id2]);
 
             // Chances of mutation happening
             if rng.gen_range(0..=100) < 20 {
                 // Mutating the new element
-                mutation(&mut child);
+                mutation.mutation(&mut child);
             }
             pop.push(child);
         }
@@ -133,8 +116,8 @@ where
         let (mut best, mut index) = (0.0, 0);
         ratings.iter().enumerate().for_each(|(i, v)| if *v > best {best = *v; index = i;});
 
-        println!("Gen: {gen}. Best rating: {best:.3}");
-        println!("Best element: {}", &pop[index]);
+        //println!("Gen: {gen}. Best rating: {best:.3}");
+        //println!("Best element: {}", &pop[index]);
 
         gen += 1;
     }
@@ -147,21 +130,20 @@ where
 
 fn main() {
     //let selector = Rating{ max_pop: 200 };
-    let selector = Elitism{ max_pop: 100 };
+    //let selector = Elitism{ max_pop: 200 };
+    let selector = Rank{ max_pop: 200 };
     let evaluator = BasicEvaluation{ solution: String::from("coucoualexjtmbb") };
     let generator = BasicGenerator{ string_size: evaluator.solution.len() };
     let stop_crit = Mark{ max_rating: evaluator.solution.len() as f32 };
-    let pop_size = 10000;
+    let crossover = BasicCrossover;
+    let mutation = BasicMutation;
+    let pop_size = 1000;
 
     let instant = Instant::now();
 
-    let (solution, gen) = generate(&generator,
-        &evaluator,
-        &selector,
-        &crossover,
-        &mutation,
-        &stop_crit,
-        pop_size);
+    let (solution, gen) = generate(&generator, &evaluator, &selector,
+        &crossover, &mutation, &stop_crit, pop_size);
+        
     let time = instant.elapsed().as_millis();
     println!("Found solution: {solution} ; in {gen} generations and in {time}ms");
 }

@@ -1,5 +1,3 @@
-
-
 pub trait Criterion {
     fn criterion(&self, ratings: &Vec<f32>) -> bool;
 }
