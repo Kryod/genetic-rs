@@ -1,20 +1,20 @@
-use std::{fmt::Display, time::Instant};
+use std::{fmt::Display};
 
 use rand::{thread_rng, Rng};
 
-mod criterion;
-mod selector;
-mod evaluator;
-mod generator;
-mod crossover;
-mod mutation;
+pub mod criterion;
+pub mod selector;
+pub mod evaluator;
+pub mod generator;
+pub mod crossover;
+pub mod mutation;
 
-use criterion::*;
-use selector::*;
-use evaluator::*;
-use generator::*;
-use crossover::*;
-use mutation::*;
+use criterion::Criterion;
+use selector::Selector;
+use evaluator::Evaluator;
+use generator::Generator;
+use crossover::Crossover;
+use mutation::Mutation;
 
 const NUM_THREADS: u32 = 8;
 
@@ -22,6 +22,7 @@ fn fill_ratings<T, E>(pop_size: u32, pop: &Vec<T>, evaluator: &E, ratings: &mut 
 where
     E: Evaluator<T> + Send + Sync,
     T: Send + Sync {
+
     std::thread::scope(|scope| {
         let mut pop_handled = pop_size / NUM_THREADS;
         let mut offset = 0;
@@ -58,7 +59,7 @@ where
     });
 }
 
-fn generate<T, G, E, S, C, M, F>(generator: &G, evaluator: &E, selector: &S,
+pub fn generate<T, G, E, S, C, M, F>(generator: &G, evaluator: &E, selector: &S,
     crossover: &C, mutation: &M, stop_crit: &F , pop_size: u32) -> (T, i32)
 where 
     G: Generator<T>,
@@ -126,24 +127,4 @@ where
     ratings.iter().enumerate().for_each(|(i, v)| if *v > best {best = *v; index = i;});
 
     (pop.remove(index), gen)
-}
-
-fn main() {
-    //let selector = Rating{ max_pop: 200 };
-    //let selector = Elitism{ max_pop: 200 };
-    let selector = Rank{ max_pop: 200 };
-    let evaluator = BasicEvaluation{ solution: String::from("coucoualexjtmbb") };
-    let generator = BasicGenerator{ string_size: evaluator.solution.len() };
-    let stop_crit = Mark{ max_rating: evaluator.solution.len() as f32 };
-    let crossover = BasicCrossover;
-    let mutation = BasicMutation;
-    let pop_size = 1000;
-
-    let instant = Instant::now();
-
-    let (solution, gen) = generate(&generator, &evaluator, &selector,
-        &crossover, &mutation, &stop_crit, pop_size);
-        
-    let time = instant.elapsed().as_millis();
-    println!("Found solution: {solution} ; in {gen} generations and in {time}ms");
 }

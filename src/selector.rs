@@ -1,4 +1,4 @@
-use rand::{thread_rng, distributions::WeightedIndex, prelude::Distribution};
+use rand::{thread_rng, distributions::WeightedIndex, prelude::Distribution, Rng};
 
 pub trait Selector<T> {
     fn selector(&self, pop: &Vec<T>, ratings: &Vec<f32>) -> Vec<T>;
@@ -77,6 +77,48 @@ impl<T: Clone> Selector<T> for Rank {
 
         for _ in 0..self.max_pop {
             selected.push(pop[dist.sample(&mut rng)].clone());
+        }
+
+        selected
+    }
+}
+
+pub struct Tournament {
+    pub max_pop: usize,
+}
+
+impl<T: Clone> Selector<T> for Tournament {
+
+    fn selector(&self, pop: &Vec<T>, ratings: &Vec<f32>) -> Vec<T> {
+        let mut selected = Vec::with_capacity(self.max_pop);
+        let mut participants = Vec::with_capacity(self.max_pop);
+        let mut rng = thread_rng();
+
+        while selected.len() < self.max_pop-1 {
+
+            for _ in 0..self.max_pop {
+                
+                let mut index = rng.gen_range(0..pop.len());
+                while participants.contains(&index) {
+                    index = rng.gen_range(0..pop.len());
+                }
+                participants.push(index);
+            }
+            
+            let mut best = participants[0];
+            let mut best_rating = ratings[best];
+
+            for p in &participants {
+                if best_rating < ratings[*p] {
+                    best = *p;
+                    best_rating = ratings[best];
+                }
+            }
+
+            selected.push(pop[best].clone());
+
+            participants.clear();
+
         }
 
         selected
