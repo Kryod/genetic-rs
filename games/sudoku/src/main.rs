@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use genetic_rs::criterion::Mark;
+use genetic_rs::criterion::*;
 use genetic_rs::selector::*;
 
 mod sudoku;
@@ -46,22 +46,25 @@ fn main() {
         2, 7, 5,
         0, 0, 1];
     let sudoku = Sudoku::new([cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9]);
-    //let selector = Rating{ max_pop: 200 };
+    //let selector = Rating{ max_pop: 2000 };
     //let selector = Elitism{ max_pop: 200 };
-    let selector = Rank{ max_pop: 200 };
+    let selector = Rank{ max_pop: 2000 };
     //let selector = Tournament{ max_pop: 200 };
     let evaluator = BasicEvaluation;
     let generator = BasicGenerator{ sudoku };
-    let stop_crit = Mark{ max_rating: u8::MAX as f32 };
+    let mut stop_crit = Mark{ max_rating: u8::MAX as f32 };
+    //let mut stop_crit = Plateau::new(1000);
     let crossover = BasicCrossover;
-    let mutation = BasicMutation;
-    let pop_size = 1000;
+    //let crossover = HalfCrossover;
+    //let mutation = BasicMutation;
+    let mutation = SingleMutation;
+    let pop_size = 5000;
 
     let instant = Instant::now();
 
-    let (solution, gen) = genetic_rs::generate(&generator, &evaluator, &selector,
-        &crossover, &mutation, &stop_crit, pop_size);
+    let (solution, gen, score) = genetic_rs::generate(&generator, &evaluator, &selector,
+        &crossover, &mutation, &mut stop_crit, pop_size);
         
     let time = instant.elapsed().as_millis();
-    println!("Found solution: {solution} ; in {gen} generations and in {time}ms");
+    println!("Found solution: {solution} ; in {gen} generations and in {time}ms with score of {score}");
 }

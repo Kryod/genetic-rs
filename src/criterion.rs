@@ -25,18 +25,31 @@ pub struct Plateau {
     prev_rating: f32
 }
 
+impl Plateau {
+
+    pub fn new(max_iterations: usize) -> Self {
+        Self {
+            max_iterations,
+            iterations: 0,
+            prev_rating: 0.0
+        }
+    }
+}
+
 impl Criterion for Plateau
 {
+
     fn criterion(&mut self, ratings: &Vec<f32>) -> bool {
         let max = ratings.clone().into_iter().reduce(f32::max).unwrap();
         if self.prev_rating != max {
             self.prev_rating = max;
+            self.iterations = 0;
         }
         else if self.prev_rating == max {
             self.iterations += 1;
         }
 
-        self.max_iterations > self.iterations
+        self.max_iterations <= self.iterations
     }
 }
 
@@ -51,6 +64,16 @@ impl Criterion for Iterations
     fn criterion(&mut self, _ratings: &Vec<f32>) -> bool {
         self.iterations += 1;
 
-        self.max_iterations > self.iterations
+        self.max_iterations <= self.iterations
+    }
+}
+
+impl Iterations {
+
+    pub fn new(max_iterations: usize) -> Self {
+        Self {
+            max_iterations,
+            iterations: 0,
+        }
     }
 }

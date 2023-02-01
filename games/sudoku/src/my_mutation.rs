@@ -15,12 +15,27 @@ impl Mutation<Sudoku> for BasicMutation
             let mut to_permute: Vec<_> = (0..9).into_iter().filter(|x| !cell.immutables.contains(x)).collect();
             to_permute.shuffle(&mut rng);
             for _ in to_permute.clone() {
-                if rng.gen_bool(0.30) {
+                if rng.gen_bool(0.20) {
                     if to_permute.len() > 1 {
                         cell.data.swap(to_permute.pop().unwrap(), to_permute.pop().unwrap());
                     }
                 }
             }
         }
+    }
+}
+
+pub struct SingleMutation;
+
+impl Mutation<Sudoku> for SingleMutation
+{
+    fn mutation(&self, pop: &mut Sudoku) {
+        let mut rng = thread_rng();
+        let mutating_cell = pop.cells.choose_mut(&mut rng).unwrap();
+
+        let mut to_permute: Vec<_> = (0..9).into_iter().filter(|x| !mutating_cell.immutables.contains(x)).collect();
+        to_permute.shuffle(&mut rng);
+
+        mutating_cell.data.swap(to_permute.pop().unwrap(), to_permute.pop().unwrap());
     }
 }

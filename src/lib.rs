@@ -60,7 +60,7 @@ where
 }
 
 pub fn generate<T, G, E, S, C, M, F>(generator: &G, evaluator: &E, selector: &S,
-    crossover: &C, mutation: &M, stop_crit: &mut F , pop_size: u32) -> (T, i32)
+    crossover: &C, mutation: &M, stop_crit: &mut F , pop_size: u32) -> (T, i32, f32)
 where 
     G: Generator<T>,
     E: Evaluator<T> + Send + Sync,
@@ -84,6 +84,8 @@ where
     fill_ratings(pop_size, &pop, evaluator, &mut ratings);
 
     let mut gen = 0;
+    #[cfg(debug_assertions)]
+    let mut last_best = 0.0;
 
     // Check if criterion has been reached
     while !stop_crit.criterion(&ratings) {
@@ -103,7 +105,7 @@ where
             let mut child = crossover.crossover(&parents[id1], &parents[id2]);
 
             // Chances of mutation happening
-            if rng.gen_range(0..=100) < 20 {
+            if rng.gen_range(1..=100) < 25 {
                 // Mutating the new element
                 mutation.mutation(&mut child);
             }
@@ -117,8 +119,15 @@ where
         let (mut best, mut index) = (0.0, 0);
         ratings.iter().enumerate().for_each(|(i, v)| if *v > best {best = *v; index = i;});
 
-        println!("Gen: {gen}. Best rating: {best:.3}");
+        //println!("Gen: {gen}. Best rating: {best:.3}");
         //println!("Best element: {}", &pop[index]);
+        #[cfg(debug_assertions)]
+        {
+            if best != last_best {
+                println!("Gen: {gen}. Best rating: {best:.3}");
+                last_best = best;
+            }
+        }
 
         gen += 1;
     }
@@ -126,5 +135,5 @@ where
     let (mut best, mut index) = (0.0, 0);
     ratings.iter().enumerate().for_each(|(i, v)| if *v > best {best = *v; index = i;});
 
-    (pop.remove(index), gen)
+    (pop.remove(index), gen, best)
 }
