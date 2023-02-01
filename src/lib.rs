@@ -117,7 +117,7 @@ where
         let (mut best, mut index) = (0.0, 0);
         ratings.iter().enumerate().for_each(|(i, v)| if *v > best {best = *v; index = i;});
 
-        //println!("Gen: {gen}. Best rating: {best:.3}");
+        println!("Gen: {gen}. Best rating: {best:.3}");
         //println!("Best element: {}", &pop[index]);
 
         gen += 1;
