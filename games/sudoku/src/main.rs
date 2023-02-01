@@ -48,16 +48,17 @@ fn main() {
     let sudoku = Sudoku::new([cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8, cell9]);
     //let selector = Rating{ max_pop: 2000 };
     //let selector = Elitism{ max_pop: 200 };
-    let selector = Rank{ max_pop: 2000 };
+    //let selector = Rank{ max_pop: 2000 };
     //let selector = Tournament{ max_pop: 200 };
+    let selector = BestAndRand{ best_pop: 1500, rand_pop: 1500 };
     let evaluator = BasicEvaluation;
     let generator = BasicGenerator{ sudoku };
     let mut stop_crit = Mark{ max_rating: u8::MAX as f32 };
     //let mut stop_crit = Plateau::new(1000);
     let crossover = BasicCrossover;
     //let crossover = HalfCrossover;
-    //let mutation = BasicMutation;
-    let mutation = SingleMutation;
+    let mutation = BasicMutation;
+    //let mutation = SingleMutation;
     let pop_size = 5000;
 
     let instant = Instant::now();

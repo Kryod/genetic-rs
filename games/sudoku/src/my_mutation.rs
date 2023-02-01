@@ -15,7 +15,7 @@ impl Mutation<Sudoku> for BasicMutation
             let mut to_permute: Vec<_> = (0..9).into_iter().filter(|x| !cell.immutables.contains(x)).collect();
             to_permute.shuffle(&mut rng);
             for _ in to_permute.clone() {
-                if rng.gen_bool(0.20) {
+                if rng.gen_bool(0.30) {
                     if to_permute.len() > 1 {
                         cell.data.swap(to_permute.pop().unwrap(), to_permute.pop().unwrap());
                     }

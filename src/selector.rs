@@ -1,4 +1,4 @@
-use rand::{thread_rng, distributions::WeightedIndex, prelude::Distribution, Rng};
+use rand::{thread_rng, distributions::WeightedIndex, prelude::Distribution, Rng, seq::SliceRandom};
 
 pub trait Selector<T> {
     fn selector(&self, pop: &Vec<T>, ratings: &Vec<f32>) -> Vec<T>;
@@ -120,6 +120,32 @@ impl<T: Clone> Selector<T> for Tournament {
             participants.clear();
 
         }
+
+        selected
+    }
+}
+
+pub struct BestAndRand {
+    pub best_pop: usize,
+    pub rand_pop: usize
+}
+
+impl<T: Clone> Selector<T> for BestAndRand {
+
+    fn selector(&self, pop: &Vec<T>, ratings: &Vec<f32>) -> Vec<T> {
+        let mut selected = Vec::with_capacity(self.best_pop + self.rand_pop);
+
+        let mut rng = thread_rng();
+
+        let mut pairs: Vec<(&T, &f32)> =pop.iter().zip(ratings.iter()).collect();
+        pairs.sort_by(|a, b| (*a).1.partial_cmp((*b).1).unwrap());
+        pairs.reverse();
+        let mut pairs_iter = pairs.iter();
+        for _ in 0..self.best_pop {
+            selected.push(pairs_iter.next().unwrap().0.clone());
+        }
+
+        selected.extend(pop.choose_multiple(&mut rng, self.rand_pop).cloned());
 
         selected
     }
