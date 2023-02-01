@@ -60,7 +60,7 @@ where
 }
 
 pub fn generate<T, G, E, S, C, M, F>(generator: &G, evaluator: &E, selector: &S,
-    crossover: &C, mutation: &M, stop_crit: &F , pop_size: u32) -> (T, i32)
+    crossover: &C, mutation: &M, stop_crit: &mut F , pop_size: u32) -> (T, i32)
 where 
     G: Generator<T>,
     E: Evaluator<T> + Send + Sync,
